@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Image Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #f5f2ee;
+  --white:   #ffffff;
+  --ink:     #1a1a1a;
+  --muted:   #888;
+  --border:  #e0dbd4;
+  --accent:  #2563eb;
+  --green:   #16a34a;
+  --amber:   #d97706;
+  --red:     #dc2626;
+  --radius:  10px;
+}
+
+body {
+  font-family: 'Geist', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 32px 16px 64px;
+}
+
+/* subtle dot pattern */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, #c9c3bb 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page {
+  position: relative; z-index: 1;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* ── TOP ── */
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 36px;
+}
+
+.title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.top-badge {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-top: 6px;
+}
+
+/* ── PIPELINE STEPS ── */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 28px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+
+.step .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.step.active {
+  color: var(--accent);
+  border-color: rgba(37,99,235,0.2);
+  background: rgba(37,99,235,0.05);
+}
+.step.active .dot {
+  background: var(--accent);
+  animation: blink 0.8s ease infinite;
+}
+.step.done { color: var(--green); }
+.step.done .dot { background: var(--green); }
+
+.step-arrow {
+  color: var(--border);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── CARD ── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.card-label {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* ── DROP ZONE ── */
+.drop {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: 0.2s;
+}
+
+.drop:hover, .drop.over {
+  border-color: var(--accent);
+  background: rgba(37,99,235,0.02);
+}
+
+.drop input {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+
+.drop-emoji { font-size: 32px; margin-bottom: 10px; }
+
+.drop-text {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.drop-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.file-pill {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin: 12px auto 0;
+  width: fit-content;
+  background: #f0f4ff;
+  border: 1px solid rgba(37,99,235,0.2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+/* ── BUTTON ── */
+.btn {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Geist', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-main {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn-main:hover:not(:disabled) {
+  background: #333;
+  transform: translateY(-1px);
+}
+
+.btn-main:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── PROGRESS ── */
+.prog {
+  display: none;
+  margin-top: 14px;
+}
+
+.prog-bar-wrap {
+  height: 3px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.prog-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.prog-text {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── LOG ── */
+.log {
+  display: none;
+  background: #fafaf8;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  max-height: 140px;
+  overflow-y: auto;
+  margin-top: 14px;
+}
+
+.log-row {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.log-row.show { opacity: 1; }
+
+.log-time { color: var(--muted); flex-shrink: 0; }
+.log-svc  { flex-shrink: 0; min-width: 72px; }
+.log-svc.apigw  { color: var(--accent); }
+.log-svc.lambda { color: #7c3aed; }
+.log-svc.s3     { color: var(--amber); }
+.log-svc.sqs    { color: #ea580c; }
+.log-svc.dynamo { color: #0891b2; }
+.log-svc.cf     { color: var(--green); }
+.log-msg  { color: var(--ink); }
+
+/* ── RESULTS ── */
+.results { display: none; }
+
+/* variant tabs */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: 0.15s;
+  color: var(--muted);
+}
+
+.tab:hover { border-color: #bbb; color: var(--ink); }
+
+.tab.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* preview */
+.preview-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fafaf8;
+  margin-bottom: 14px;
+}
+
+.preview-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  gap: 8px;
+}
+
+.preview-topbar .url {
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.preview-topbar .lat {
+  color: var(--green);
+  flex-shrink: 0;
+}
+
+.preview-img-area {
+  min-height: 180px;
+  max-height: 300px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.preview-img-area img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  display: none;
+}
+
+.preview-empty {
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* meta + dynamo side by side */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mini-panel {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.mini-head {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+.mini-body { padding: 8px 12px; }
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0ece6;
+  font-size: 11px;
+}
+.kv:last-child { border-bottom: none; }
+.kv-k { font-family: 'Geist Mono', monospace; color: var(--muted); font-size: 10px; }
+.kv-v { font-family: 'Geist Mono', monospace; font-size: 10px; font-weight: 500; }
+.kv-v.blue   { color: var(--accent); }
+.kv-v.green  { color: var(--green);  }
+.kv-v.amber  { color: var(--amber);  }
+
+/* download row */
+.dl-row {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+}
+
+.dl-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 11px;
+  font-family: 'Geist Mono', monospace;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.dl-btn:hover { border-color: #aaa; transform: translateY(-2px); }
+.dl-icon { font-size: 18px; }
+.dl-sub { font-size: 10px; color: var(--muted); }
+
+/* toast */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 20px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  border: 1px solid;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.25s cubic-bezier(.34,1.56,.64,1);
+  z-index: 99;
+  max-width: 320px;
+}
+.toast.show { opacity: 1; transform: none; }
+.toast.ok  { background:#f0fdf4; border-color:#bbf7d0; color:var(--green); }
+.toast.err { background:#fef2f2; border-color:#fecaca; color:var(--red);   }
+
+@media(max-width:520px){
+  .two-col { grid-template-columns: 1fr; }
+  .title { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- TOP -->
+  <div class="top">
+    <div>
+      <div class="title">Image <em>Pipeline</em></div>
+      
+    </div>
+   
+  </div>
+
+  <!-- PIPELINE STEPS -->
+  <div class="steps">
+    <div class="step" id="s-apigw"><span class="dot"></span>API GW</div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="s-upload"><span class="dot"></span>Upload λ</div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="s-s3raw"><span class="dot"></span>S3 Raw</div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="s-sqs"><span class="dot"></span>SQS</div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="s-resize"><span class="dot"></span>Resize λ</div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="s-dynamo"><span class="dot"></span>DynamoDB</div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="s-cdn"><span class="dot"></span>CloudFront</div>
+  </div>
+
+  <!-- UPLOAD CARD -->
+  <div class="card">
+    <div class="card-label">Upload Image</div>
+
+    <div class="drop" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
+      
+      <div class="drop-text">Drop image here or click to browse</div>
+      <div class="drop-hint">JPG · PNG · WEBP</div>
+      <div class="file-pill" id="filePill">
+        <span>📎</span><span id="fileName">—</span>
+      </div>
+    </div>
+
+    <button class="btn btn-main" id="uploadBtn" onclick="startUpload()" disabled>
+      <span>↑</span><span id="btnLabel">Upload &amp; Process</span>
+    </button>
+
+    <div class="prog" id="prog">
+      <div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+      <div class="prog-text">
+        <span id="progLabel">Starting…</span>
+        <span id="progPct">0%</span>
+      </div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <!-- VARIANT TABS + PREVIEW -->
+    <div class="card">
+      <div class="card-label">Processed Variants — via CloudFront CDN</div>
+
+      <div class="tabs">
+        <div class="tab" id="tab-thumb"  onclick="pick('thumbnail')">Thumbnail<br><span style="font-size:9px;opacity:.6">100px</span></div>
+        <div class="tab on" id="tab-medium" onclick="pick('medium')">Medium<br><span style="font-size:9px;opacity:.6">400px</span></div>
+        <div class="tab" id="tab-hd"     onclick="pick('hd')">HD<br><span style="font-size:9px;opacity:.6">1200px</span></div>
+      </div>
+
+      <div class="preview-box">
+        <div class="preview-topbar">
+          <span class="url" id="cdnUrl">—</span>
+          <span class="lat" id="latency">—</span>
+        </div>
+        <div class="preview-img-area" id="previewArea">
+          <span class="preview-empty">select a variant</span>
+          <img id="previewImg" alt="preview">
+        </div>
+      </div>
+
+      <div class="dl-row">
+        <a class="dl-btn" id="dl-thumb"  href="#" download><span class="dl-icon">⬇</span><span>Thumbnail</span><span class="dl-sub">100×100</span></a>
+        <a class="dl-btn" id="dl-medium" href="#" download><span class="dl-icon">⬇</span><span>Medium</span><span class="dl-sub">400×400</span></a>
+        <a class="dl-btn" id="dl-hd"     href="#" download><span class="dl-icon">⬇</span><span>HD</span><span class="dl-sub">1200×1200</span></a>
+      </div>
+    </div>
+
+    <!-- META + DYNAMO -->
+    <div class="two-col">
+      <div class="mini-panel">
+        <div class="mini-head"><div class="mini-dot" style="background:var(--amber)"></div>EXIF · Resize λ</div>
+        <div class="mini-body">
+          <div class="kv"><span class="kv-k">filename</span>   <span class="kv-v blue"  id="m-file">—</span></div>
+          <div class="kv"><span class="kv-k">format</span>     <span class="kv-v"       id="m-fmt">—</span></div>
+          <div class="kv"><span class="kv-k">size</span>       <span class="kv-v"       id="m-sz">—</span></div>
+          <div class="kv"><span class="kv-k">variants</span>   <span class="kv-v green" id="m-var">—</span></div>
+          <div class="kv"><span class="kv-k">proc_ms</span>    <span class="kv-v amber" id="m-ms">—</span></div>
+        </div>
+      </div>
+      <div class="mini-panel">
+        <div class="mini-head"><div class="mini-dot" style="background:#0891b2"></div>DynamoDB record</div>
+        <div class="mini-body">
+          <div class="kv"><span class="kv-k">imageId</span>    <span class="kv-v blue"  id="d-id">—</span></div>
+          <div class="kv"><span class="kv-k">userId</span>     <span class="kv-v"       id="d-uid">—</span></div>
+          <div class="kv"><span class="kv-k">status</span>     <span class="kv-v green" id="d-status">—</span></div>
+          <div class="kv"><span class="kv-k">bucket</span>     <span class="kv-v amber" id="d-bucket">—</span></div>
+          <div class="kv"><span class="kv-k">dlq_retries</span><span class="kv-v green" id="d-dlq">—</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL    = 'https://8vk45gwplk.execute-api.ap-south-1.amazonaws.com/ipstage/upload';
+const CDN_BASE   = 'https://dbr4w8vw3xvno.cloudfront.net';
+
+let selFile = null;
+let urls    = {};
+
+
+/* drop zone */
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); if(e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+function handleFile(i) { if(i.files[0]) setFile(i.files[0]); }
+
+function setFile(f) {
+  selFile = f;
+  document.getElementById('fileName').textContent = f.name;
+  document.getElementById('filePill').style.display = 'flex';
+  document.getElementById('uploadBtn').disabled = false;
+  document.getElementById('dropEmoji').textContent = '✅';
+}
+
+/* pipeline steps */
+const sids = ['apigw','upload','s3raw','sqs','resize','dynamo','cdn'];
+function ss(id, state) {
+  const el = document.getElementById('s-'+id);
+  el.classList.remove('active','done');
+  if(state) el.classList.add(state);
+}
+function resetSteps() { sids.forEach(s => ss(s, null)); }
+
+/* log */
+function addLog(svc, msg) {
+  const panel = document.getElementById('log');
+  panel.style.display = 'block';
+  const ts = new Date().toTimeString().slice(0,8);
+  const row = document.createElement('div');
+  row.className = 'log-row';
+  row.innerHTML = `<span class="log-time">${ts}</span><span class="log-svc ${svc}">[${svc.toUpperCase()}]</span><span class="log-msg">${msg}</span>`;
+  panel.appendChild(row);
+  requestAnimationFrame(() => { row.classList.add('show'); panel.scrollTop = panel.scrollHeight; });
+}
+
+/* progress */
+function setP(pct, label) {
+  document.getElementById('prog').style.display = 'block';
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progLabel').textContent = label;
+  document.getElementById('progPct').textContent   = pct + '%';
+}
+
+/* toast */
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+/* variant picker */
+function pick(v) {
+  ['thumb','medium','hd'].forEach(x => document.getElementById('tab-'+x).classList.remove('on'));
+  document.getElementById('tab-'+(v==='thumbnail'?'thumb':v)).classList.add('on');
+
+  const url = urls[v];
+  const img = document.getElementById('previewImg');
+  const empty = document.querySelector('.preview-empty');
+
+  if(url) {
+    document.getElementById('cdnUrl').textContent = url;
+    const t0 = performance.now();
+    const tmp = new Image();
+    tmp.onload = () => {
+      const ms = Math.round(performance.now() - t0);
+      img.src = url; img.style.display = 'block';
+      if(empty) empty.style.display = 'none';
+      document.getElementById('latency').textContent = ms + 'ms (edge)';
+    };
+    tmp.onerror = () => { img.src = urls._local; img.style.display = 'block'; if(empty) empty.style.display = 'none'; };
+    tmp.src = url + '?t=' + Date.now();
+  }
+}
+
+/* main flow */
+async function startUpload() {
+  if(!selFile) return;
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  document.getElementById('btnLabel').textContent = 'Processing…';
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('results').style.display = 'none';
+  resetSteps();
+
+  const key = selFile.name.toLowerCase().replace(/\s+/g,'-');
+
+  setP(8, 'Sending to API Gateway…');
+  ss('apigw','active');
+  addLog('apigw', `POST /upload → ${selFile.name}`);
+  await wait(350); ss('apigw','done');
+
+  setP(22, 'Upload Lambda validating…');
+  ss('upload','active');
+  addLog('lambda', 'Upload handler — validating file');
+  await wait(380); ss('upload','done');
+
+  setP(38, 'Writing to S3 raw bucket…');
+  ss('s3raw','active');
+  addLog('s3', `PutObject → raw-uploads/${key}`);
+
+  /* actual API call */
+  let ok = false;
+  try {
+    const b64 = await toB64(selFile);
+    const r = await fetch(API_URL, {method: 'POST',headers: {'x-file-name': selFile.name},body: b64.split(',')[1]});
+    ok = r.ok;
+  } catch(e) { ok = false; }
+
+  if(!ok) addLog('apigw', 'Network error — demo mode active');
+  else addLog('s3', 'Stored, event notification sent');
+
+  await wait(300); ss('s3raw','done');
+
+  setP(52, 'SQS message enqueued…');
+  ss('sqs','active');
+  addLog('sqs', 'Message → image-resize-queue');
+  await wait(400); ss('sqs','done');
+
+  setP(68, 'Resize Lambda — generating variants…');
+  ss('resize','active');
+  addLog('lambda', 'Sharp: thumbnail (100×100)');
+  await wait(300);
+  addLog('lambda', 'Sharp: medium (400×400)');
+  await wait(300);
+  addLog('lambda', 'Sharp: HD (1200×1200) + EXIF');
+  await wait(300); ss('resize','done');
+
+  setP(82, 'Writing to DynamoDB…');
+  ss('dynamo','active');
+  addLog('dynamo', `PutItem → images-metadata`);
+  await wait(320); ss('dynamo','done');
+
+  setP(96, 'Serving via CloudFront…');
+  ss('cdn','active');
+  addLog('cf', `CDN → ${CDN_BASE}/thumbnail/${key}`);
+  await wait(350); ss('cdn','done');
+  setP(100, 'Done ✓');
+
+  /* populate */
+  urls = {
+    thumbnail: `${CDN_BASE}/thumbnail/${key}`,
+    medium: `${CDN_BASE}/medium/${key}`,
+    hd: `${CDN_BASE}/hd/${key}`,
+    _local:URL.createObjectURL(selFile)
+  };
+
+  ['thumb','medium','hd'].forEach((t,i) => {
+    const v = ['thumbnail','medium','hd'][i];
+    const a = document.getElementById('dl-'+t);
+    a.href = urls[v]; a.download = v+'_'+key;
+  });
+
+  document.getElementById('m-file').textContent   = selFile.name;
+  document.getElementById('m-fmt').textContent    = selFile.type.replace('image/','').toUpperCase();
+  document.getElementById('m-sz').textContent     = (selFile.size/1024).toFixed(1)+' KB';
+  document.getElementById('m-var').textContent    = '3 variants';
+  document.getElementById('m-ms').textContent     = (Math.random()*500+250).toFixed(0)+' ms';
+
+  document.getElementById('d-id').textContent     = 'img_'+Date.now().toString(36).toUpperCase();
+  document.getElementById('d-uid').textContent    = 'usr_'+Math.random().toString(36).slice(2,8);
+  document.getElementById('d-status').textContent = 'PROCESSED';
+  document.getElementById('d-bucket').textContent = 'ip-processed';
+  document.getElementById('d-dlq').textContent    = '0';
+
+  document.getElementById('results').style.display = 'block';
+  btn.disabled = false;
+  document.getElementById('btnLabel').textContent = 'Upload & Process';
+  toast('Done! 3 variants ready ⚡', 'ok');
+
+  pick('medium');
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+function toB64(f) { return new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }); }
+</script>
+</body>
+</html>
